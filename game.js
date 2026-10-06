@@ -1,8 +1,20 @@
 'use strict';
 const canvas=document.querySelector('#game'),ctx=canvas.getContext('2d');
 const $=s=>document.querySelector(s),W=1200,H=720,TAU=Math.PI*2;
+const forestImage=new Image();
+forestImage.src='assets/emerald-arena.webp';
+// Floor outline in canvas coordinates; artwork is aspect-fitted at (60,0), 1080 x 720.
+const forestBoundary=[[427,108],[751,108],[924,173],[989,302],[956,425],[794,533],[416,533],[244,425],[211,310],[265,187]];
+function constrainForest(o){
+ for(let pass=0;pass<4;pass++)for(let i=0;i<forestBoundary.length;i++){
+  const a=forestBoundary[i],b=forestBoundary[(i+1)%forestBoundary.length];
+  const dx=b[0]-a[0],dy=b[1]-a[1],len=Math.hypot(dx,dy);
+  const nx=-dy/len,ny=dx/len,inside=(o.x-a[0])*nx+(o.y-a[1])*ny;
+  if(inside<o.r+6){o.x+=nx*(o.r+6-inside);o.y+=ny*(o.r+6-inside);}
+ }
+}
 const arenas=[
- {name:'Emerald Ruins',tag:'MOSS & STONE',floor:'#203931',tile:'#304b3c',edge:'#0d2524',accent:'#afcc80',rocks:[[260,220,45],[920,490,45],[870,210,32],[300,510,32]]},
+ {name:'Emerald Ruins',tag:'MOSS & STONE',floor:'#203931',tile:'#304b3c',edge:'#0d2524',accent:'#afcc80',rocks:[]},
  {name:'Sunken Sands',tag:'DUST & GOLD',floor:'#5b4732',tile:'#746045',edge:'#332b24',accent:'#e0b573',rocks:[[240,220,55],[960,220,55],[240,500,55],[960,500,55]]},
  {name:'Frost Citadel',tag:'ICE & ASH',floor:'#2f4553',tile:'#405b68',edge:'#192c3c',accent:'#a0d7df',rocks:[[360,190,40],[840,190,40],[360,530,40],[840,530,40]]}
 ];
@@ -18,9 +30,9 @@ function mapButtons(){const box=$('#maps');box.replaceChildren();arenas.forEach(
 function openMap(){if(state==='map'){closeMap();return;}resumeState=state;state='map';keys.clear();selected=active;$('#overlay').hidden=false;$('.panel h1').textContent='Choose your arena.';$('.panel p').innerHTML='Each arena has its own layout. Entering another arena starts a new run.';mapButtons();$('#start').textContent=resumeState==='play'?'Resume arena →':'Enter arena →';}
 function closeMap(){if(resumeState==='play'||resumeState==='paused'){state=resumeState;$('#overlay').hidden=true;} }
 function start(){if(state==='map'&&selected===active&&resumeState==='play'){state='play';$('#overlay').hidden=true;return;}active=selected;resetPlayer();wave=0;kills=0;enemies=[];effects=[];particles=[];state='play';keys.clear();$('#overlay').hidden=true;$('#location').textContent='THE '+arenas[active].name.toUpperCase();nextWave();}
-function nextWave(){wave++;delay=0;$('#banner').textContent='WAVE '+wave+' / 5'+(wave===5?' · RIFT GUARDIAN':'');for(let i=0;i<3+wave*2;i++){const a=i*TAU/(3+wave*2);const boss=wave===5&&i===0;enemies.push({x:600+Math.cos(a)*495,y:360+Math.sin(a)*260,r:boss?32:17,hp:boss?240:42+wave*7,max:boss?240:42+wave*7,speed:boss?65:65+wave*5,angle:0,cool:1+i*.15,wind:0,lockedX:0,lockedY:0,flash:0,boss});}}
+function nextWave(){wave++;delay=0;$('#banner').textContent='WAVE '+wave+' / 5'+(wave===5?' · RIFT GUARDIAN':'');for(let i=0;i<3+wave*2;i++){const a=i*TAU/(3+wave*2);const boss=wave===5&&i===0;enemies.push({x:600+Math.cos(a)*(active===0?350:495),y:(active===0?320:360)+Math.sin(a)*(active===0?170:260),r:boss?32:17,hp:boss?240:42+wave*7,max:boss?240:42+wave*7,speed:boss?65:65+wave*5,angle:0,cool:1+i*.15,wind:0,lockedX:0,lockedY:0,flash:0,boss});if(active===0)constrainForest(enemies[enemies.length-1]);}}
 function burst(x,y,color,n=12){for(let i=0;i<n;i++){const a=Math.random()*TAU,s=40+Math.random()*150;particles.push({x,y,vx:Math.cos(a)*s,vy:Math.sin(a)*s,life:.45+Math.random()*.3,color});}}
-function move(o,dx,dy){o.x=clamp(o.x+dx,65+o.r,W-65-o.r);o.y=clamp(o.y+dy,75+o.r,H-60-o.r);for(const [x,y,r] of arenas[active].rocks){let vx=o.x-x,vy=o.y-y,d=Math.hypot(vx,vy);if(d<r+o.r){if(d<.001){vx=1;vy=0;d=1;}o.x=x+vx/d*(r+o.r);o.y=y+vy/d*(r+o.r);}}}
+function move(o,dx,dy){if(active===0){o.x+=dx;o.y+=dy;constrainForest(o);return;}o.x=clamp(o.x+dx,65+o.r,W-65-o.r);o.y=clamp(o.y+dy,75+o.r,H-60-o.r);for(const [x,y,r] of arenas[active].rocks){let vx=o.x-x,vy=o.y-y,d=Math.hypot(vx,vy);if(d<r+o.r){if(d<.001){vx=1;vy=0;d=1;}o.x=x+vx/d*(r+o.r);o.y=y+vy/d*(r+o.r);}}}
 function action(type){if(state!=='play')return;if(type==='dodge'){if(player.stamina>=25&&player.dodge<=0){player.stamina-=25;player.dodge=.19;player.invincible=.32;}return;}
  const spin=type==='spin';if(player.attack>0||player.dodge>0||(spin&&(player.stamina<40||player.spin>0)))return;
  player.attack=spin?.65:.3;if(spin){player.stamina-=40;player.spin=1.5;}
@@ -41,7 +53,7 @@ function update(dt){time+=dt;if(state!=='play')return;player.attack=Math.max(0,p
  if(player.hp<=0){player.hp=0;end(false);return;}if(!enemies.length){delay+=dt;$('#banner').textContent='WAVE CLEARED · RECOVERING';if(delay>2){player.hp=Math.min(100,player.hp+20);if(wave===5)end(true);else nextWave();}}
 }
 function circle(x,y,r,color){ctx.fillStyle=color;ctx.beginPath();ctx.arc(x,y,r,0,TAU);ctx.fill();}
-function floor(){const a=arenas[active];ctx.fillStyle=a.edge;ctx.fillRect(0,0,W,H);ctx.fillStyle=a.floor;ctx.fillRect(55,65,1090,600);ctx.strokeStyle=a.tile;ctx.lineWidth=1;for(let y=65;y<665;y+=60){for(let x=55;x<1145;x+=70){ctx.strokeRect(x+(Math.floor(y/60)%2)*35,y,70,60);}}
+function floor(){const a=arenas[active];if(active===0&&forestImage.complete&&forestImage.naturalWidth){ctx.fillStyle='#0b1917';ctx.fillRect(0,0,W,H);ctx.drawImage(forestImage,60,0,1080,720);return;}ctx.fillStyle=a.edge;ctx.fillRect(0,0,W,H);ctx.fillStyle=a.floor;ctx.fillRect(55,65,1090,600);ctx.strokeStyle=a.tile;ctx.lineWidth=1;for(let y=65;y<665;y+=60){for(let x=55;x<1145;x+=70){ctx.strokeRect(x+(Math.floor(y/60)%2)*35,y,70,60);}}
  ctx.strokeStyle=a.accent+'55';ctx.lineWidth=3;ctx.strokeRect(65,75,1070,580);ctx.beginPath();ctx.arc(600,360,150,0,TAU);ctx.stroke();ctx.beginPath();ctx.arc(600,360,165,0,TAU);ctx.stroke();ctx.save();ctx.translate(600,360);ctx.rotate(Math.PI/4);ctx.strokeRect(-78,-78,156,156);ctx.restore();
  for(let i=0;i<45;i++){const x=(i*239%1060)+70,y=(i*137%550)+90;ctx.fillStyle=a.tile;ctx.fillRect(x,y,3+(i%4),2);}
  for(const [x,y,r] of a.rocks){circle(x+8,y+12,r+4,'#0005');circle(x,y,r,a.edge);circle(x-3,y-6,r*.83,a.tile);ctx.strokeStyle=a.accent+'55';ctx.beginPath();ctx.arc(x-3,y-6,r*.8,3.4,5.5);ctx.stroke();if(active===0){circle(x-16,y-16,12,'#587148');circle(x+13,y+6,8,'#587148');}}

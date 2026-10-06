@@ -15,7 +15,7 @@ Clear five waves in each of three arenas. Enemies show red ground circles before
 ## Files
 `index.html`: interface; `style.css`: responsive styles; `game.js`: drawing, combat, enemies and maps; `run.sh`: local Python server.
 
-This first prototype uses original Canvas-drawn placeholder fighters and scenery. It does not yet use the generated monster PNGs, include audio, multiplayer, or produce an Android APK. The touch layout supports browser play on Android.
+This first prototype uses original Canvas-drawn placeholder fighters, a generated forest arena background, and drawn desert/frost scenery. It does not yet use the generated monster PNGs, include audio, multiplayer, or produce an Android APK. The touch layout supports browser play on Android.
 
 ## Git Bash
 Clone and run:
@@ -35,3 +35,5 @@ git push
 ```
 
 No npm install or build step is required.
+
+Forest background: `assets/emerald-arena.webp`, optimized from the supplied PNG. A floor polygon confines fighters and enemy spawns to the stone arena. The background is isometric artwork; combat still uses screen-space movement.
