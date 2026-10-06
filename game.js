@@ -3,6 +3,37 @@ const canvas=document.querySelector('#game'),ctx=canvas.getContext('2d');
 const $=s=>document.querySelector(s),W=1200,H=720,TAU=Math.PI*2;
 const forestImage=new Image();
 forestImage.src='assets/emerald-arena.webp';
+// Four frames per direction, six frames per second for a slow shamble.
+const zombieFrames={};
+for(const direction of ['down','up','left','right']){
+ zombieFrames[direction]=Array.from({length:4},(_,i)=>{
+  const image=new Image();
+  image.src=`assets/sprites/zombie/walk/${direction}/${direction}_${String(i+1).padStart(2,'0')}.png`;
+  return image;
+ });
+}
+function zombieDirection(angle){
+ return Math.abs(Math.cos(angle))>Math.abs(Math.sin(angle))
+  ?(Math.cos(angle)>0?'right':'left'):(Math.sin(angle)>0?'down':'up');
+}
+function drawZombieSprite(o){
+ const frames=zombieFrames[zombieDirection(o.angle)];
+ if(!frames.every(image=>image.complete&&image.naturalWidth))return false;
+ const image=frames[o.walking?Math.floor(o.walkTime*6)%4:0];
+ // Use one source scale for all crops so frames preserve their proportions.
+ const scale=(o.boss?1.45:1)*68/294;
+ const width=image.naturalWidth*scale,height=image.naturalHeight*scale;
+ ctx.save();ctx.fillStyle='#09140c70';ctx.beginPath();
+ ctx.ellipse(o.x,o.y+3,o.r+2,o.r*.42,0,0,TAU);ctx.fill();
+ if(o.flash>0)ctx.filter='brightness(1.8)';
+ ctx.drawImage(image,o.x-width/2,o.y-height,width,height);ctx.restore();
+ const barY=o.y-76*(o.boss?1.45:1);
+ ctx.fillStyle='#142019';ctx.fillRect(o.x-22,barY,44,4);
+ ctx.fillStyle=o.boss?'#bda16f':'#a1b478';
+ ctx.fillRect(o.x-22,barY,44*clamp(o.hp/o.max,0,1),4);
+ return true;
+}
+
 // Floor outline in canvas coordinates; artwork is aspect-fitted at (60,0), 1080 x 720.
 const forestBoundary=[[427,108],[751,108],[924,173],[989,302],[956,425],[794,533],[416,533],[244,425],[211,310],[265,187]];
 function constrainForest(o){
@@ -30,7 +61,7 @@ function mapButtons(){const box=$('#maps');box.replaceChildren();arenas.forEach(
 function openMap(){if(state==='map'){closeMap();return;}resumeState=state;state='map';keys.clear();selected=active;$('#overlay').hidden=false;$('.panel h1').textContent='Choose your arena.';$('.panel p').innerHTML='Each arena has its own layout. Entering another arena starts a new run.';mapButtons();$('#start').textContent=resumeState==='play'?'Resume arena →':'Enter arena →';}
 function closeMap(){if(resumeState==='play'||resumeState==='paused'){state=resumeState;$('#overlay').hidden=true;} }
 function start(){if(state==='map'&&selected===active&&resumeState==='play'){state='play';$('#overlay').hidden=true;return;}active=selected;resetPlayer();wave=0;kills=0;enemies=[];effects=[];particles=[];state='play';keys.clear();$('#overlay').hidden=true;$('#location').textContent='THE '+arenas[active].name.toUpperCase();nextWave();}
-function nextWave(){wave++;delay=0;$('#banner').textContent='WAVE '+wave+' / 5'+(wave===5?' · ZOMBIE BRUTE':'');for(let i=0;i<3+wave*2;i++){const a=i*TAU/(3+wave*2);const boss=wave===5&&i===0;enemies.push({x:600+Math.cos(a)*(active===0?350:495),y:(active===0?320:360)+Math.sin(a)*(active===0?170:260),r:boss?32:17,hp:boss?240:42+wave*7,max:boss?240:42+wave*7,speed:boss?23:28+Math.min(wave,5)*2,walkPhase:i*1.7,walking:false,angle:0,cool:1.6+i*.2,wind:0,lockedX:0,lockedY:0,flash:0,boss});if(active===0)constrainForest(enemies[enemies.length-1]);}}
+function nextWave(){wave++;delay=0;$('#banner').textContent='WAVE '+wave+' / 5'+(wave===5?' · ZOMBIE BRUTE':'');for(let i=0;i<3+wave*2;i++){const a=i*TAU/(3+wave*2);const boss=wave===5&&i===0;enemies.push({x:600+Math.cos(a)*(active===0?350:495),y:(active===0?320:360)+Math.sin(a)*(active===0?170:260),r:boss?32:17,hp:boss?240:42+wave*7,max:boss?240:42+wave*7,speed:boss?23:28+Math.min(wave,5)*2,walkPhase:i*1.7,walkTime:i*.17,walking:false,angle:0,cool:1.6+i*.2,wind:0,lockedX:0,lockedY:0,flash:0,boss});if(active===0)constrainForest(enemies[enemies.length-1]);}}
 function burst(x,y,color,n=12){for(let i=0;i<n;i++){const a=Math.random()*TAU,s=40+Math.random()*150;particles.push({x,y,vx:Math.cos(a)*s,vy:Math.sin(a)*s,life:.45+Math.random()*.3,color});}}
 function move(o,dx,dy){if(active===0){o.x+=dx;o.y+=dy;constrainForest(o);return;}o.x=clamp(o.x+dx,65+o.r,W-65-o.r);o.y=clamp(o.y+dy,75+o.r,H-60-o.r);for(const [x,y,r] of arenas[active].rocks){let vx=o.x-x,vy=o.y-y,d=Math.hypot(vx,vy);if(d<r+o.r){if(d<.001){vx=1;vy=0;d=1;}o.x=x+vx/d*(r+o.r);o.y=y+vy/d*(r+o.r);}}}
 function action(type){if(state!=='play')return;if(type==='dodge'){if(player.stamina>=25&&player.dodge<=0){player.stamina-=25;player.dodge=.19;player.invincible=.32;}return;}
@@ -46,7 +77,7 @@ function update(dt){time+=dt;if(state!=='play')return;player.attack=Math.max(0,p
  let dx=Number(keys.has('d')||keys.has('arrowright'))-Number(keys.has('a')||keys.has('arrowleft')),dy=Number(keys.has('s')||keys.has('arrowdown'))-Number(keys.has('w')||keys.has('arrowup'));const len=Math.hypot(dx,dy);moving=len>0;if(len){dx/=len;dy/=len;if(player.dodge<=0)player.angle=Math.atan2(dy,dx);}
  if(player.dodge>0){move(player,Math.cos(player.angle)*680*dt,Math.sin(player.angle)*680*dt);player.dodge-=dt;burst(player.x,player.y,'#9db7a4',1);}else move(player,dx*220*dt,dy*220*dt);
  if(keys.has('j'))action('slash');if(keys.has('k'))action('spin');if(keys.has(' '))action('dodge');
- for(const e of enemies){e.walking=false;e.flash=Math.max(0,e.flash-dt);e.cool-=dt;if(e.wind>0){e.wind-=dt;if(e.wind<=0){effects.push({x:e.lockedX,y:e.lockedY,r:e.boss?58:38,angle:0,life:.22,max:.22,spin:true,enemy:true});if(Math.hypot(player.x-e.lockedX,player.y-e.lockedY)<(e.boss?58:38)+player.r&&player.invincible<=0){player.hp-=e.boss?26:12;player.invincible=.65;shake=8;burst(player.x,player.y,'#df8069');}e.cool=e.boss?2.4:1.9;}}else{const d=distance(player,e);e.angle=Math.atan2(player.y-e.y,player.x-e.x);if(d<(e.boss?70:56)&&e.cool<=0){e.wind=e.boss?1.2:1;e.lockedX=player.x;e.lockedY=player.y;}else if(d>(e.boss?56:40)){e.walking=true;e.walkPhase+=dt*4;const pace=.8+.2*Math.sin(e.walkPhase);move(e,Math.cos(e.angle)*e.speed*pace*dt,Math.sin(e.angle)*e.speed*pace*dt);}}}
+ for(const e of enemies){e.walking=false;e.flash=Math.max(0,e.flash-dt);e.cool-=dt;if(e.wind>0){e.wind-=dt;if(e.wind<=0){effects.push({x:e.lockedX,y:e.lockedY,r:e.boss?58:38,angle:0,life:.22,max:.22,spin:true,enemy:true});if(Math.hypot(player.x-e.lockedX,player.y-e.lockedY)<(e.boss?58:38)+player.r&&player.invincible<=0){player.hp-=e.boss?26:12;player.invincible=.65;shake=8;burst(player.x,player.y,'#df8069');}e.cool=e.boss?2.4:1.9;}}else{const d=distance(player,e);e.angle=Math.atan2(player.y-e.y,player.x-e.x);if(d<(e.boss?70:56)&&e.cool<=0){e.wind=e.boss?1.2:1;e.lockedX=player.x;e.lockedY=player.y;}else if(d>(e.boss?56:40)){e.walking=true;e.walkTime+=dt;e.walkPhase+=dt*4;const pace=.8+.2*Math.sin(e.walkPhase);move(e,Math.cos(e.angle)*e.speed*pace*dt,Math.sin(e.angle)*e.speed*pace*dt);}}}
  // Separate enemies so a wave does not collapse into a single stack.
  for(let i=0;i<enemies.length;i++)for(let j=i+1;j<enemies.length;j++){const a=enemies[i],b=enemies[j],d=distance(a,b),limit=a.r+b.r+3;if(d>0&&d<limit){const f=(limit-d)/d*.5;const dx=(a.x-b.x)*f,dy=(a.y-b.y)*f;move(a,dx,dy);move(b,-dx,-dy);}}
  effects.forEach(e=>e.life-=dt);effects=effects.filter(e=>e.life>0);particles.forEach(p=>{p.life-=dt;p.x+=p.vx*dt;p.y+=p.vy*dt;});particles=particles.filter(p=>p.life>0);
@@ -60,6 +91,7 @@ function floor(){const a=arenas[active];if(active===0&&forestImage.complete&&for
  for(const [x,y] of [[80,90],[1120,90],[80,635],[1120,635]]){circle(x,y,17,'#17211d');circle(x,y,8,a.accent);circle(x,y,4,'#fff1b6');}}
 // Upright shambling zombies, anchored at their feet to suit the arena artwork.
 function zombie(o){
+ if(drawZombieSprite(o))return;
  const scale=o.boss?1.45:1,phase=o.walkPhase||0;
  const step=o.walking?Math.sin(phase)*4:0,sway=o.walking?Math.sin(phase*.5)*2:0;
  const reach=o.wind>0?7:0,skin=o.flash>0?'#f2e9c9':o.boss?'#879074':'#9baa7b';
