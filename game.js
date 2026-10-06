@@ -34,7 +34,7 @@ function drawZombieSprite(o){
  }
  const image=frames[index];
  // Use one source scale for all crops so frames preserve their proportions.
- const scale=(o.boss?1.45:1)*68/294;
+ const scale=(o.boss?1.45:1)*68/image.naturalHeight;
  const width=image.naturalWidth*scale,height=image.naturalHeight*scale;
  ctx.save();ctx.fillStyle='#09140c70';ctx.beginPath();
  ctx.ellipse(o.x,o.y+3,o.r+2,o.r*.42,0,0,TAU);ctx.fill();
