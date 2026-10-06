@@ -3,12 +3,17 @@ const canvas=document.querySelector('#game'),ctx=canvas.getContext('2d');
 const $=s=>document.querySelector(s),W=1200,H=720,TAU=Math.PI*2;
 const forestImage=new Image();
 forestImage.src='assets/emerald-arena.webp';
-// Four frames per direction, six frames per second for a slow shamble.
-const zombieFrames={};
+// Four walk + four attack frames per direction.
+const zombieFrames={},zombieAttackFrames={};
 for(const direction of ['down','up','left','right']){
  zombieFrames[direction]=Array.from({length:4},(_,i)=>{
   const image=new Image();
   image.src=`assets/sprites/zombie/walk/${direction}/${direction}_${String(i+1).padStart(2,'0')}.png`;
+  return image;
+ });
+ zombieAttackFrames[direction]=Array.from({length:4},(_,i)=>{
+  const image=new Image();
+  image.src=`assets/sprites/zombie/attack/${direction}/${direction}_${String(i+1).padStart(2,'0')}.png`;
   return image;
  });
 }
@@ -17,9 +22,17 @@ function zombieDirection(angle){
   ?(Math.cos(angle)>0?'right':'left'):(Math.sin(angle)>0?'down':'up');
 }
 function drawZombieSprite(o){
- const frames=zombieFrames[zombieDirection(o.angle)];
- if(!frames.every(image=>image.complete&&image.naturalWidth))return false;
- const image=frames[o.walking?Math.floor(o.walkTime*6)%4:0];
+ const direction=zombieDirection(o.angle);
+ const walkFrames=zombieFrames[direction];
+ const attackFrames=zombieAttackFrames[direction];
+ if(!walkFrames.every(image=>image.complete&&image.naturalWidth))return false;
+ let frames=walkFrames,index=o.walking?Math.floor(o.walkTime*6)%4:0;
+ if(o.wind>0&&attackFrames.every(image=>image.complete&&image.naturalWidth)){
+  frames=attackFrames;
+  const attackLength=o.boss?1.2:1;
+  index=Math.min(3,Math.floor(clamp(1-o.wind/attackLength,0,.999)*4));
+ }
+ const image=frames[index];
  // Use one source scale for all crops so frames preserve their proportions.
  const scale=(o.boss?1.45:1)*68/294;
  const width=image.naturalWidth*scale,height=image.naturalHeight*scale;
