@@ -10,7 +10,7 @@ A dependency-free top-down arena fighting prototype. Open `index.html` directly,
 - P: pause; M: world map
 - Touch controls appear on touch-capable devices
 
-Clear five waves in each of three arenas. Enemies show red ground circles before attacking. Wave five includes a guardian. Health recovers by 20 between waves; stamina regenerates. Best kills and conquered arenas save in browser storage when available. Changing arenas starts a fresh run.
+Clear five waves in each of three arenas. Enemies show red ground circles before attacking. Wave five includes a slow zombie brute. Zombies shamble at 30–38 units/second (the player moves at 220), with a one-second attack warning and 1.9-second recovery. The brute is slower with a longer windup. Health recovers by 20 between waves; stamina regenerates. Best kills and conquered arenas save in browser storage when available. Changing arenas starts a fresh run.
 
 ## Files
 `index.html`: interface; `style.css`: responsive styles; `game.js`: drawing, combat, enemies and maps; `run.sh`: local Python server.
