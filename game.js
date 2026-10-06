@@ -4,16 +4,18 @@ const $=s=>document.querySelector(s),W=1200,H=720,TAU=Math.PI*2;
 const forestImage=new Image();
 forestImage.src='assets/emerald-arena.webp';
 // Four walk + four attack frames per direction.
+// Bump this whenever sprite PNGs are replaced so browsers cannot reuse stale images.
+const ZOMBIE_SPRITE_VERSION='attack-clean-v2';
 const zombieFrames={},zombieAttackFrames={};
 for(const direction of ['down','up','left','right']){
  zombieFrames[direction]=Array.from({length:4},(_,i)=>{
   const image=new Image();
-  image.src=`assets/sprites/zombie/walk/${direction}/${direction}_${String(i+1).padStart(2,'0')}.png`;
+  image.src=`assets/sprites/zombie/walk/${direction}/${direction}_${String(i+1).padStart(2,'0')}.png?v=${ZOMBIE_SPRITE_VERSION}`;
   return image;
  });
  zombieAttackFrames[direction]=Array.from({length:4},(_,i)=>{
   const image=new Image();
-  image.src=`assets/sprites/zombie/attack/${direction}/${direction}_${String(i+1).padStart(2,'0')}.png`;
+  image.src=`assets/sprites/zombie/attack/${direction}/${direction}_${String(i+1).padStart(2,'0')}.png?v=${ZOMBIE_SPRITE_VERSION}`;
   return image;
  });
 }
@@ -31,7 +33,13 @@ function drawZombieSprite(o){
  const attacking=o.wind>0||o.strikeHold>0;
  if(attacking){
   attackProgress=o.wind>0?clamp(1-o.wind/attackLength,0,1):1;
-  index=Math.min(3,Math.floor(attackProgress*4));
+  // Explicit timing for the cleaned 4-frame sequence:
+  // 0 wind-up, 1 lunge, 2 strike, 3 recovery/impact hold.
+  if(o.strikeHold>0)index=3;
+  else if(attackProgress<.25)index=0;
+  else if(attackProgress<.55)index=1;
+  else if(attackProgress<.88)index=2;
+  else index=3;
   const attackImage=attackFrames[index];
   if(attackImage&&attackImage.complete&&attackImage.naturalWidth)frames=attackFrames;
  }
