@@ -1,5 +1,5 @@
 'use strict';
-const canvas=document.querySelector('#game'),ctx=canvas.getContext('2d');
+const canvas=document.querySelector('#game'),ctx=canvas.getContext('2d');canvas.tabIndex=0;
 const $=s=>document.querySelector(s),W=1200,H=720,TAU=Math.PI*2;
 const forestImage=new Image();
 forestImage.src='assets/emerald-arena.webp';
@@ -113,7 +113,7 @@ function resetPlayer(){player={x:600,y:360,r:18,hp:100,stamina:100,angle:0,attac
 function mapButtons(){const box=$('#maps');box.replaceChildren();arenas.forEach((a,i)=>{const b=document.createElement('button');b.className=i===selected?'active':'';b.style.setProperty('--accent',a.accent);b.innerHTML=a.name+'<small>'+(conquered.includes(i)?'✓ CONQUERED':a.tag)+'</small>';b.onclick=()=>{selected=i;mapButtons();$('#start').textContent=selected===active&&wave>0&&resumeState==='play'?'Resume arena →':'Enter arena →';};box.append(b);});}
 function openMap(){if(state==='map'){closeMap();return;}resumeState=state;state='map';keys.clear();selected=active;$('#overlay').hidden=false;$('.panel h1').textContent='Choose your arena.';$('.panel p').innerHTML='Each arena has its own layout. Entering another arena starts a new run.';mapButtons();$('#start').textContent=resumeState==='play'?'Resume arena →':'Enter arena →';}
 function closeMap(){if(resumeState==='play'||resumeState==='paused'){state=resumeState;$('#overlay').hidden=true;} }
-function start(){if(state==='map'&&selected===active&&resumeState==='play'){state='play';$('#overlay').hidden=true;return;}active=selected;resetPlayer();wave=0;kills=0;enemies=[];effects=[];particles=[];state='play';keys.clear();$('#overlay').hidden=true;$('#location').textContent='THE '+arenas[active].name.toUpperCase();nextWave();}
+function start(){if(state==='map'&&selected===active&&resumeState==='play'){state='play';$('#overlay').hidden=true;canvas.focus({preventScroll:true});return;}active=selected;resetPlayer();wave=0;kills=0;enemies=[];effects=[];particles=[];state='play';keys.clear();$('#overlay').hidden=true;canvas.focus({preventScroll:true});$('#location').textContent='THE '+arenas[active].name.toUpperCase();nextWave();}
 function nextWave(){wave++;delay=0;$('#banner').textContent='WAVE '+wave+' / 5'+(wave===5?' · ZOMBIE BRUTE':'');for(let i=0;i<3+wave*2;i++){const a=i*TAU/(3+wave*2);const boss=wave===5&&i===0;enemies.push({x:600+Math.cos(a)*(active===0?350:495),y:(active===0?320:360)+Math.sin(a)*(active===0?170:260),r:boss?32:17,hp:boss?240:42+wave*7,max:boss?240:42+wave*7,speed:boss?23:28+Math.min(wave,5)*2,walkPhase:i*1.7,walkTime:i*.17,walking:false,angle:0,cool:1.6+i*.2,wind:0,lockedX:0,lockedY:0,flash:0,hit:0,strikeHold:0,boss});if(active===0)constrainForest(enemies[enemies.length-1]);}}
 function burst(x,y,color,n=12){for(let i=0;i<n;i++){const a=Math.random()*TAU,s=40+Math.random()*150;particles.push({x,y,vx:Math.cos(a)*s,vy:Math.sin(a)*s,life:.45+Math.random()*.3,color});}}
 function move(o,dx,dy){if(active===0){o.x+=dx;o.y+=dy;constrainForest(o);return;}o.x=clamp(o.x+dx,65+o.r,W-65-o.r);o.y=clamp(o.y+dy,75+o.r,H-60-o.r);for(const [x,y,r] of arenas[active].rocks){let vx=o.x-x,vy=o.y-y,d=Math.hypot(vx,vy);if(d<r+o.r){if(d<.001){vx=1;vy=0;d=1;}o.x=x+vx/d*(r+o.r);o.y=y+vy/d*(r+o.r);}}}
@@ -197,8 +197,8 @@ function draw(){ctx.save();ctx.translate((Math.random()-.5)*shake,(Math.random()
 function frame(now){const dt=Math.min((now-last)/1000,.033);last=now;update(dt);draw();requestAnimationFrame(frame);}
 function gameKey(e){const byCode={KeyW:'w',KeyA:'a',KeyS:'s',KeyD:'d',ArrowUp:'arrowup',ArrowDown:'arrowdown',ArrowLeft:'arrowleft',ArrowRight:'arrowright',Space:' '};return byCode[e.code]||e.key.toLowerCase();}
 const movementKeys=new Set(['w','a','s','d','arrowup','arrowdown','arrowleft','arrowright']);
-window.addEventListener('keydown',e=>{const k=gameKey(e);if(movementKeys.has(k)||k===' ')e.preventDefault();if(!e.repeat){if(k==='p')pause();if(k==='m')openMap();}if(state==='menu'&&movementKeys.has(k))start();if(state==='play')keys.add(k);},true);
-window.addEventListener('keyup',e=>keys.delete(gameKey(e)),true);
+document.addEventListener('keydown',e=>{const k=gameKey(e);if(movementKeys.has(k)||k===' ')e.preventDefault();if(!e.repeat){if(k==='p')pause();if(k==='m')openMap();}if(state==='menu'&&movementKeys.has(k))start();if(state==='play')keys.add(k);},true);
+document.addEventListener('keyup',e=>keys.delete(gameKey(e)),true);
 window.addEventListener('blur',()=>keys.clear());
 document.addEventListener('visibilitychange',()=>{if(document.hidden&&state==='play')pause();});
 for(const b of document.querySelectorAll('[data-key]')){b.addEventListener('pointerdown',e=>{e.preventDefault();b.setPointerCapture(e.pointerId);keys.add(b.dataset.key);});for(const name of ['pointerup','pointercancel','lostpointercapture'])b.addEventListener(name,()=>keys.delete(b.dataset.key));}
