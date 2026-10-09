@@ -197,7 +197,7 @@ function draw(){ctx.save();ctx.translate((Math.random()-.5)*shake,(Math.random()
 function frame(now){const dt=Math.min((now-last)/1000,.033);last=now;update(dt);draw();requestAnimationFrame(frame);}
 function gameKey(e){const byCode={KeyW:'w',KeyA:'a',KeyS:'s',KeyD:'d',ArrowUp:'arrowup',ArrowDown:'arrowdown',ArrowLeft:'arrowleft',ArrowRight:'arrowright',Space:' '};return byCode[e.code]||e.key.toLowerCase();}
 const movementKeys=new Set(['w','a','s','d','arrowup','arrowdown','arrowleft','arrowright']);
-window.addEventListener('keydown',e=>{const k=gameKey(e);if(movementKeys.has(k)||k===' ')e.preventDefault();if(!e.repeat){if(k==='p')pause();if(k==='m')openMap();}if(state==='play')keys.add(k);},true);
+window.addEventListener('keydown',e=>{const k=gameKey(e);if(movementKeys.has(k)||k===' ')e.preventDefault();if(!e.repeat){if(k==='p')pause();if(k==='m')openMap();}if(state==='menu'&&movementKeys.has(k))start();if(state==='play')keys.add(k);},true);
 window.addEventListener('keyup',e=>keys.delete(gameKey(e)),true);
 window.addEventListener('blur',()=>keys.clear());
 document.addEventListener('visibilitychange',()=>{if(document.hidden&&state==='play')pause();});
