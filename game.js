@@ -202,4 +202,4 @@ document.addEventListener('keyup',e=>keys.delete(gameKey(e)),true);
 window.addEventListener('blur',()=>keys.clear());
 document.addEventListener('visibilitychange',()=>{if(document.hidden&&state==='play')pause();});
 for(const b of document.querySelectorAll('[data-key]')){b.addEventListener('pointerdown',e=>{e.preventDefault();b.setPointerCapture(e.pointerId);keys.add(b.dataset.key);});for(const name of ['pointerup','pointercancel','lostpointercapture'])b.addEventListener(name,()=>keys.delete(b.dataset.key));}
-$('#start').onclick=start;$('#pause').onclick=pause;$('#mapButton').onclick=openMap;mapButtons();requestAnimationFrame(frame);
+$('#start').onclick=start;$('#pause').onclick=pause;$('#mapButton').onclick=openMap;mapButtons();start();requestAnimationFrame(frame);
