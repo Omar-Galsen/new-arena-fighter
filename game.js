@@ -19,6 +19,15 @@ for(const direction of ['down','up','left','right']){
   return image;
  });
 }
+const PLAYER_IDLE_SPRITE_VERSION='knight-idle-v1';
+const playerIdleFrames={};
+for(const direction of ['down','up','left','right']){
+ playerIdleFrames[direction]=Array.from({length:8},(_,i)=>{
+  const image=new Image();
+  image.src=`assets/sprites/player/idle/${direction}/idle_${direction}_${String(i+1).padStart(2,'0')}.png?v=${PLAYER_IDLE_SPRITE_VERSION}`;
+  return image;
+ });
+}
 function zombieDirection(angle){
  return Math.abs(Math.cos(angle))>Math.abs(Math.sin(angle))
   ?(Math.cos(angle)>0?'right':'left'):(Math.sin(angle)>0?'down':'up');
@@ -153,7 +162,17 @@ function zombie(o){
  ctx.fillStyle='#142019';ctx.fillRect(o.x-22,o.y-68*scale,44,4);
  ctx.fillStyle=o.boss?'#bda16f':'#a1b478';ctx.fillRect(o.x-22,o.y-68*scale,44*Math.max(0,o.hp/o.max),4);
 }
-function fighter(o,hero){if(!hero){zombie(o);return;}ctx.save();ctx.translate(o.x,o.y);circle(2,9,o.r+3,'#0006');
+function drawPlayerIdle(o){
+ if(moving||o.attack>0||o.spin>0||o.dodge>0)return false;
+ const frames=playerIdleFrames[zombieDirection(o.angle)];
+ if(!frames||!frames.every(image=>image.complete&&image.naturalWidth))return false;
+ const image=frames[Math.floor(time*3)%frames.length],height=68,width=image.naturalWidth*height/image.naturalHeight;
+ ctx.save();ctx.fillStyle='#09140c70';ctx.beginPath();ctx.ellipse(o.x,o.y+12,20,8,0,0,TAU);ctx.fill();
+ if(o.hit>0){const kick=8*Math.sin((o.hit/.28)*Math.PI);ctx.translate(Math.cos(o.hitAngle)*kick,Math.sin(o.hitAngle)*kick);ctx.rotate(Math.sin(time*70)*.12);}
+ if(o.invincible>0&&Math.floor(time*22)%2)ctx.globalAlpha=.4;
+ ctx.drawImage(image,o.x-width/2,o.y+28-height,width,height);ctx.restore();return true;
+}
+function fighter(o,hero){if(!hero){zombie(o);return;}if(drawPlayerIdle(o))return;ctx.save();ctx.translate(o.x,o.y);circle(2,9,o.r+3,'#0006');
  if(hero&&o.hit>0){const kick=8*Math.sin((o.hit/.28)*Math.PI);ctx.translate(Math.cos(o.hitAngle)*kick,Math.sin(o.hitAngle)*kick);ctx.rotate(Math.sin(time*70)*.12);}
  if(hero&&o.invincible>0&&Math.floor(time*22)%2)ctx.globalAlpha=.4;const bob=hero&&moving?Math.sin(time*18)*3:Math.sin(time*3)*1.5;ctx.translate(0,bob);ctx.rotate(o.angle);if(hero){ctx.fillStyle='#b4c884';ctx.beginPath();ctx.moveTo(-8,-11);ctx.lineTo(-32,-17);ctx.lineTo(-25,17);ctx.lineTo(-8,11);ctx.fill();circle(0,0,17,'#22312d');circle(0,0,13,'#b5c9c2');ctx.fillStyle='#e3eee5';ctx.fillRect(3,-9,5,18);ctx.fillStyle='#526f77';ctx.fillRect(8,-6,4,12);ctx.fillStyle='#d5ddc6';ctx.fillRect(12,13,35,5);ctx.fillStyle='#c9a466';ctx.fillRect(18,8,4,15);circle(0,-18,8,'#708f7e');}else{circle(0,0,o.r,o.flash>0?'#fff0bb':o.boss?'#78435e':'#8d6354');circle(4,-6,o.r*.5,'#b29478');ctx.fillStyle='#f5b45e';ctx.fillRect(10,-9,5,5);ctx.fillRect(10,3,5,5);ctx.fillStyle='#ddcda0';ctx.beginPath();ctx.moveTo(-8,-o.r+3);ctx.lineTo(2,-o.r-12);ctx.lineTo(8,-o.r+6);ctx.fill();ctx.beginPath();ctx.moveTo(-8,o.r-3);ctx.lineTo(2,o.r+12);ctx.lineTo(8,o.r-6);ctx.fill();}ctx.restore();if(!hero){ctx.fillStyle='#121b18';ctx.fillRect(o.x-22,o.y-o.r-18,44,4);ctx.fillStyle=o.boss?'#d092b2':'#d69d78';ctx.fillRect(o.x-22,o.y-o.r-18,44*Math.max(0,o.hp/o.max),4);}}
 function draw(){ctx.save();ctx.translate((Math.random()-.5)*shake,(Math.random()-.5)*shake);floor();for(const e of enemies)if(e.wind>0){circle(e.lockedX,e.lockedY,e.boss?58:38,'#ed695540');ctx.strokeStyle='#fa9172';ctx.lineWidth=2;ctx.beginPath();ctx.arc(e.lockedX,e.lockedY,e.boss?58:38,0,TAU);ctx.stroke();}const actors=[...enemies,player].sort((a,b)=>a.y-b.y);for(const o of actors)fighter(o,o===player);for(const e of effects){ctx.globalAlpha=e.life/e.max;ctx.strokeStyle=e.enemy?'#ef755f':'#e6efb9';ctx.lineWidth=e.spin?12:18;ctx.beginPath();ctx.arc(e.x,e.y,e.r*(1-e.life/e.max*.25),e.spin?0:e.angle-1.1,e.spin?TAU:e.angle+1.1);ctx.stroke();}ctx.globalAlpha=1;for(const p of particles){ctx.globalAlpha=Math.min(1,p.life*2);circle(p.x,p.y,2,p.color);}ctx.globalAlpha=1;ctx.restore();if(state==='paused'){ctx.fillStyle='#081512a0';ctx.fillRect(0,0,W,H);ctx.fillStyle='#eff2da';ctx.font='40px Georgia';ctx.textAlign='center';ctx.fillText('Paused · P to resume',600,360);}$('#hp').style.width=player.hp+'%';$('#hpText').textContent=Math.ceil(player.hp)+' / 100';$('#stamina').style.width=player.stamina+'%';$('#wave').textContent=String(wave).padStart(2,'0');$('#kills').textContent=kills;$('#best').textContent=best;$('#message').textContent=state==='play'?enemies.length+' enemies remaining · Spin '+(player.spin>0?player.spin.toFixed(1)+'s':'ready'):'Choose your battleground';}
